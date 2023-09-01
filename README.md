@@ -1,7 +1,7 @@
 # cocos2dx-xxtea-decryptor
 cocos2dx xxtea source decryptor (LUAC, JSC and more)
 
-Release binary was built in x86 mode
+Release binary was built in x86 mode, output path of decrypted file will be located in the "parent directory+\out" folder of the file/director
 
 Usage: exeName.exe [key] [sign] [input file/dir]
 
