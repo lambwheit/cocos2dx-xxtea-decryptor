@@ -16,6 +16,7 @@ open multiple encrypted files in a text editor, they should have a common string
 
 **EXAMPLE FRIDA SCRIPT TO DUMP XXTEA KEY**
 
+![image](https://github.com/lambwheit/cocos2dx-xxtea-decryptor/assets/38606611/419dee0c-ea11-41b3-ada7-e256522ec0c1)
 ```js
 var module_name_libcocos2dlua_so='libcocos2dlua.so';  //change libcocos2dlua.so to the correct binary name
 
