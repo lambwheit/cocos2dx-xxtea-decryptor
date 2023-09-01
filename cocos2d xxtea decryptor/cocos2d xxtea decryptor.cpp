@@ -1,12 +1,13 @@
 ﻿// cocos2d xxtea decryptor.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-
 #include <iostream>
 #include "xxtea.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
 #include <direct.h>
+#include <functional>
+#include "dirent.h"
 
 static std::vector<char> ReadAllBytes(char const* filename)
 {
@@ -24,7 +25,6 @@ static std::vector<char> ReadAllBytes(char const* filename)
 
     return result;
 }
-
 int isDir(char* path)
 {
 	struct stat s;
@@ -48,30 +48,128 @@ int isDir(char* path)
 		return -1;
 	}
 }
+void listFiles(const std::string& path, std::function<void(const std::string&)> cb) {
+	if (auto dir = opendir(path.c_str())) {
+		while (auto f = readdir(dir)) {
+			if (!f->d_name || f->d_name[0] == '.') continue;
+			if (f->d_type == DT_DIR)
+				listFiles(path + f->d_name + "\\", cb);
 
+			if (f->d_type == DT_REG)
+				cb(path + f->d_name);
+		}
+		closedir(dir);
+	}
+}
+int makePath(const std::string& path)
+{
+#if defined(_WIN32)
+	int ret = _mkdir(path.c_str());
+#else
+	mode_t mode = 0755;
+	int ret = mkdir(path.c_str(), mode);
+#endif
+	if (ret == 0)
+		return 1;
+
+	switch (errno)
+	{
+	case ENOENT:
+		// parent didn't exist, try to create it
+	{
+		int pos = path.find_last_of('/');
+		if (pos == std::string::npos)
+#if defined(_WIN32)
+			pos = path.find_last_of('\\');
+		if (pos == std::string::npos)
+#endif
+			return false;
+		if (!makePath(path.substr(0, pos)))
+			return false;
+	}
+	// now, try to create again
+#if defined(_WIN32)
+	return 0 == _mkdir(path.c_str());
+#else 
+	return 0 == mkdir(path.c_str(), mode);
+#endif
+
+	case EEXIST:
+		// done!
+		return isDir(const_cast<char*>(path.c_str()));
+	default:
+		return false;
+	}
+}
 int main(int argc, char* argv[]){
 	if(argc != 4)
 	{
 		printf("Usage: %s [key] [sign] [input file/dir]\n", std::string(argv[0]).substr(std::string(argv[0]).find_last_of("/\\") + 1).c_str());
 		return -1;
 	}
-	char* key = argv[1];
-	char* sign = argv[2];
-	char* path = argv[3];
-	const int res = isDir(path);
+	std::string key = argv[1];
+	std::string sign = argv[2];
+	std::string path = argv[3];
+	const int res = isDir(const_cast<char*>(path.c_str()));
+	const std::string dir = std::string(path).substr(0, std::string(path).find_last_of("/\\") + 1);
 	if(res == 1)
 	{
-		
+		std::cout << "Directory: " << path << std::endl;
+		std::cout << "Directory2:" << dir << std::endl;
+		if(path.back() != '\\')
+		{
+			path.append("\\");
+		}
+		listFiles(path, [sign, key, path, dir](const std::string& path2) {
+			size_t len;
+			std::vector<char> dataOri = ReadAllBytes(path2.c_str());
+			std::vector<char> data = dataOri;
+			data.erase(data.begin(), data.begin() + static_cast<long>(strlen(sign.c_str())));
+			const char* decryptedData = static_cast<char*>(xxtea_decrypt(data.data(), data.size(), key.c_str(), &len));
+			const std::string outputPath = dir + "\out";
+			std::string temp = path2.substr(path.size());
+			if(temp.back() == 'c')
+			{
+				temp.pop_back();
+			}
+			std::string outputFileName = outputPath + "\\" + temp;
+			std::string path3 =  std::string(outputFileName).substr(0,std::string(outputFileName).find_last_of("/\\"));
+			if (isDir(const_cast<char*>(path3.c_str())) == -1)
+			{
+				
+				if (makePath(path3) != 1)
+				{
+					std::cout << "Failed to create output directory: " << path3 << std::endl;
+					return -1;
+
+				}
+			}
+			if (decryptedData != nullptr)
+			{
+				std::ofstream out;
+				out.open(outputFileName);
+				out.write(decryptedData, len);
+				out.close();
+				std::cout << "Decrypted: " << path2 << std::endl;
+			}
+			else
+			{
+				std::ofstream out;
+				out.open(outputFileName);
+				out.write(dataOri.data(), dataOri.size());
+				out.close();
+				std::cout << "Failed to decrypt: " << path2 << std::endl;
+			}
+		});
 	}
 	else if(res == 0)
 	{
-		std::vector<char> data = ReadAllBytes(path);
-		data.erase(data.begin(), data.begin() + static_cast<long>(strlen(sign)));
+		std::vector<char> data = ReadAllBytes(path.c_str());
+		data.erase(data.begin(), data.begin() + static_cast<long>(strlen(sign.c_str())));
 		size_t len;
-		const char* decryptedData = static_cast<char*>(xxtea_decrypt(data.data(), data.size(), key, &len));
+		const char* decryptedData = static_cast<char*>(xxtea_decrypt(data.data(), data.size(), key.c_str(), &len));
 		if (decryptedData != nullptr)
 		{
-			const std::string dir = std::string(path).substr(0, std::string(path).find_last_of("/\\") + 1);
 			const std::string fileName = std::string(path).substr(std::string(path).find_last_of("/\\") + 1);
 			const std::string outputPath = dir + "\out\\";
 			if(isDir(const_cast<char*>(outputPath.c_str())) == -1)
@@ -87,12 +185,11 @@ int main(int argc, char* argv[]){
 			out.open(outputFileName);
 			out.write(decryptedData, len);
 			out.close();
-			std::cout << "Decrypted " << path << std::endl;
+			std::cout << "Decrypted: " << path << std::endl;
 		}
 		else
 		{
-			std::cout << "Failed to decrypt " << path << std::endl;
-			return -1;
+			std::cout << "Failed to decrypt: " << path << std::endl;
 		}
 	}
     else
