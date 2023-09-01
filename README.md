@@ -46,4 +46,5 @@ How to find xxtea sign:
 
 open multiple encrypted files in a text editor, they should have a common string at the start of the file, that is the sign
 ![image](https://github.com/lambwheit/cocos2dx-xxtea-decryptor/assets/38606611/3dc2fbdc-4b93-48b0-a275-59984c688b07)
+
 In this example the key is "akskees"
