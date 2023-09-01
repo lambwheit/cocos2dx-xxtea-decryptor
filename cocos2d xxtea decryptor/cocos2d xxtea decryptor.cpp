@@ -114,8 +114,6 @@ int main(int argc, char* argv[]){
 	const std::string dir = std::string(path).substr(0, std::string(path).find_last_of("/\\") + 1);
 	if(res == 1)
 	{
-		std::cout << "Directory: " << path << std::endl;
-		std::cout << "Directory2:" << dir << std::endl;
 		if(path.back() != '\\')
 		{
 			path.append("\\");
