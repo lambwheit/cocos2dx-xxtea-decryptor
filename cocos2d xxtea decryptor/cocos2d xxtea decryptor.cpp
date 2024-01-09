@@ -145,7 +145,7 @@ int main(int argc, char* argv[]){
 			if (decryptedData != nullptr)
 			{
 				std::ofstream out;
-				out.open(outputFileName);
+				out.open(outputFileName, std::ios::binary); // Open as binary, not string (correct CRLF bug)
 				out.write(decryptedData, len);
 				out.close();
 				std::cout << "Decrypted: " << path2 << std::endl;
@@ -153,7 +153,7 @@ int main(int argc, char* argv[]){
 			else
 			{
 				std::ofstream out;
-				out.open(outputFileName);
+				out.open(outputFileName, std::ios::binary); // Open as binary, not string (correct CRLF bug)
 				out.write(dataOri.data(), dataOri.size());
 				out.close();
 				std::cout << "Failed to decrypt: " << path2 << std::endl;
@@ -178,9 +178,9 @@ int main(int argc, char* argv[]){
 					return -1;
 				}
 			}
-			const std::string outputFileName = outputPath + fileName.substr(0, fileName.size() - 1);
+			const std::string outputFileName = outputPath + fileName.substr(0, fileName.size()); // - 1 causes an error that removes the last character of the name no matter what
 			std::ofstream out;
-			out.open(outputFileName);
+			out.open(outputFileName, std::ios::binary); // Open as binary, not string (correct CRLF bug)
 			out.write(decryptedData, len);
 			out.close();
 			std::cout << "Decrypted: " << path << std::endl;
